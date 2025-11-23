@@ -1,0 +1,13 @@
+{
+  "name": "@devbase/types",
+  "version": "0.1.0-alpha",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "license": "MIT",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
