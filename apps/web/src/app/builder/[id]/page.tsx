@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Builder Page - Main visual builder interface
+ * Builder Page - Complete visual builder interface
  */
 
 import React from 'react'
@@ -12,11 +12,13 @@ import { Toolbar } from '@/components/builder/Toolbar'
 import { ComponentLibrary } from '@/components/builder/ComponentLibrary'
 import { Canvas } from '@/components/builder/Canvas'
 import { PropertiesPanel } from '@/components/builder/PropertiesPanel'
+import { LayersPanel } from '@/components/builder/LayersPanel'
 
 export default function BuilderPage() {
   const {
     showComponentLibrary,
     showPropertiesPanel,
+    showLayersPanel,
   } = useBuilderStore()
 
   return (
@@ -27,24 +29,34 @@ export default function BuilderPage() {
 
         {/* Main Content */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Component Library Panel */}
+          {/* Component Library Panel (Left) */}
           {showComponentLibrary && (
             <div className="w-80 border-r">
               <ComponentLibrary />
             </div>
           )}
 
-          {/* Canvas */}
+          {/* Canvas (Center) */}
           <div className="flex-1">
             <Canvas />
           </div>
 
-          {/* Properties Panel */}
-          {showPropertiesPanel && (
-            <div className="w-80 border-l">
-              <PropertiesPanel />
-            </div>
-          )}
+          {/* Right Panels */}
+          <div className="flex">
+            {/* Properties Panel */}
+            {showPropertiesPanel && (
+              <div className="w-80 border-l">
+                <PropertiesPanel />
+              </div>
+            )}
+
+            {/* Layers Panel */}
+            {showLayersPanel && (
+              <div className="w-64 border-l">
+                <LayersPanel />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </DndProvider>
