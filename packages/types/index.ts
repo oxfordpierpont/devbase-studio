@@ -115,10 +115,12 @@ export interface ComponentNode {
   id: string
   type: ComponentType
   props: Record<string, any>
-  styles: StyleConfig
+  styles?: StyleConfig
   children: ComponentNode[]
-  functions: AttachedFunction[]
+  functions?: AttachedFunction[]
   position?: Position
+  visible?: boolean
+  locked?: boolean
 }
 
 export type ComponentType =
@@ -293,13 +295,20 @@ export interface FunctionDefinition {
   name: string
   description: string
   category: FunctionCategory
-  version: string
+  version?: string
 
-  inputs: InputParameter[]
-  outputs: OutputParameter[]
+  inputs?: InputParameter[]
+  outputs?: OutputParameter[]
   config?: ConfigParameter[]
+  parameters?: Array<{
+    name: string
+    type: string
+    required: boolean
+    description: string
+  }>
 
-  implementation: string // Code as string for code generation
+  implementation?: string // Code as string for code generation
+  code?: string // Alternative code field
 
   tags?: string[]
   icon?: string

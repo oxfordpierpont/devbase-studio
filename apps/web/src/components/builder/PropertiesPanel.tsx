@@ -150,10 +150,10 @@ export function PropertiesPanel() {
               <Label>Width</Label>
               <Input
                 placeholder="auto, 100%, 400px"
-                value={component.styles.width || ''}
+                value={component.styles?.width || ''}
                 onChange={(e) =>
                   updateComponent(component.id, {
-                    styles: { ...component.styles, width: e.target.value },
+                    styles: { ...(component.styles || {}), width: e.target.value },
                   })
                 }
               />
@@ -162,10 +162,10 @@ export function PropertiesPanel() {
               <Label>Height</Label>
               <Input
                 placeholder="auto, 100%, 400px"
-                value={component.styles.height || ''}
+                value={component.styles?.height || ''}
                 onChange={(e) =>
                   updateComponent(component.id, {
-                    styles: { ...component.styles, height: e.target.value },
+                    styles: { ...(component.styles || {}), height: e.target.value },
                   })
                 }
               />
@@ -174,10 +174,10 @@ export function PropertiesPanel() {
               <Label>Background Color</Label>
               <Input
                 type="color"
-                value={component.styles.backgroundColor || '#ffffff'}
+                value={component.styles?.backgroundColor || '#ffffff'}
                 onChange={(e) =>
                   updateComponent(component.id, {
-                    styles: { ...component.styles, backgroundColor: e.target.value },
+                    styles: { ...(component.styles || {}), backgroundColor: e.target.value },
                   })
                 }
               />
@@ -186,10 +186,10 @@ export function PropertiesPanel() {
               <Label>Padding</Label>
               <Input
                 placeholder="0, 16px, 1rem"
-                value={component.styles.padding || ''}
+                value={component.styles?.padding || ''}
                 onChange={(e) =>
                   updateComponent(component.id, {
-                    styles: { ...component.styles, padding: e.target.value },
+                    styles: { ...(component.styles || {}), padding: e.target.value },
                   })
                 }
               />
@@ -198,10 +198,10 @@ export function PropertiesPanel() {
               <Label>Margin</Label>
               <Input
                 placeholder="0, 16px, 1rem"
-                value={component.styles.margin || ''}
+                value={component.styles?.margin || ''}
                 onChange={(e) =>
                   updateComponent(component.id, {
-                    styles: { ...component.styles, margin: e.target.value },
+                    styles: { ...(component.styles || {}), margin: e.target.value },
                   })
                 }
               />

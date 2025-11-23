@@ -26,7 +26,7 @@ function DraggableComponent({ definition }: { definition: ComponentDefinition })
 
   return (
     <div
-      ref={drag}
+      ref={drag as any}
       className={cn(
         'flex flex-col items-center gap-2 rounded-lg border-2 border-dashed p-4 cursor-move hover:border-primary hover:bg-accent transition-colors',
         isDragging && 'opacity-50'

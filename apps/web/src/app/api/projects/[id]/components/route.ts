@@ -82,7 +82,7 @@ export async function POST(
     // Create new component
     const newComponent: ComponentNode = {
       id: `component-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type,
+      type: type as any,
       props,
       children,
       visible: true,

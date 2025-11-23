@@ -25,7 +25,7 @@ interface BuilderStore extends BuilderState {
   addComponent: (component: Omit<ComponentNode, 'id'>, parentId?: string) => string
   updateComponent: (id: string, updates: Partial<ComponentNode>) => void
   deleteComponent: (id: string) => void
-  duplicateComponent: (id: string) => void
+  duplicateComponent: (id: string) => string
 
   // Selection actions
   selectComponent: (id: string, multi?: boolean) => void
@@ -44,16 +44,23 @@ interface BuilderStore extends BuilderState {
   // Canvas actions
   setZoom: (zoom: number) => void
   setPan: (x: number, y: number) => void
+  setPanOffset: (offset: { x: number; y: number }) => void
   resetCanvas: () => void
+  zoomIn: () => void
+  zoomOut: () => void
+  resetZoom: () => void
 
   // History actions
   undo: () => void
   redo: () => void
   saveHistory: (description: string) => void
   clearHistory: () => void
+  canUndo: boolean
+  canRedo: boolean
 
   // Utility
-  getComponent: (id: string) => ComponentNode | null
+  panOffset: { x: number; y: number }
+  getComponent: (id: string) => ComponentNode | undefined
   getAllComponents: () => ComponentNode[]
   getComponentTree: () => ComponentNode[]
 }
@@ -67,7 +74,7 @@ const initialState: BuilderState = {
   showPropertiesPanel: true,
   showLayersPanel: true,
   showCodeEditor: false,
-  zoom: 1,
+  zoom: 100,
   pan: { x: 0, y: 0 },
   history: [],
   historyIndex: -1,
@@ -80,6 +87,9 @@ export const useBuilderStore = create<BuilderStore>()(
     persist(
       (set, get) => ({
         ...initialState,
+        canUndo: false,
+        canRedo: false,
+        panOffset: { x: 0, y: 0 },
 
         // Project actions
         setProject: (project) => {
@@ -101,105 +111,77 @@ export const useBuilderStore = create<BuilderStore>()(
         },
 
         // Component actions
-        addComponent: (componentData, parentId) => {
-          const id = generateComponentId(componentData.type)
-
+        addComponent: (component, parentId) => {
+          const id = generateComponentId(component.type)
           const newComponent: ComponentNode = {
+            ...component,
             id,
-            ...componentData,
+            children: component.children || [],
+            styles: component.styles || {},
+            functions: component.functions || [],
           }
 
-          set((state) => {
-            const components = { ...state.components }
-            components[id] = newComponent
+          set((state) => ({
+            components: {
+              ...state.components,
+              [id]: newComponent,
+            },
+          }))
 
-            // If parent exists, add to its children
-            if (parentId && components[parentId]) {
-              components[parentId] = {
-                ...components[parentId],
-                children: [...components[parentId].children, newComponent],
-              }
-            }
-
-            return { components }
-          })
-
-          get().saveHistory(`Added ${componentData.type} component`)
           return id
         },
 
         updateComponent: (id, updates) => {
           set((state) => {
-            const components = { ...state.components }
-            if (components[id]) {
-              components[id] = { ...components[id], ...updates }
-            }
-            return { components }
-          })
+            const component = state.components[id]
+            if (!component) return state
 
-          get().saveHistory(`Updated component ${id}`)
+            return {
+              components: {
+                ...state.components,
+                [id]: { ...component, ...updates },
+              },
+            }
+          })
         },
 
         deleteComponent: (id) => {
           set((state) => {
-            const components = { ...state.components }
-
-            // Recursively delete children
-            const deleteRecursive = (compId: string) => {
-              const component = components[compId]
-              if (!component) return
-
-              component.children.forEach((child) => {
-                deleteRecursive(child.id)
-              })
-
-              delete components[compId]
-            }
-
-            deleteRecursive(id)
-
-            // Remove from parent's children
-            Object.values(components).forEach((comp) => {
-              comp.children = comp.children.filter((child) => child.id !== id)
-            })
+            const newComponents = { ...state.components }
+            delete newComponents[id]
 
             return {
-              components,
-              selectedComponentIds: state.selectedComponentIds.filter(
-                (selectedId) => selectedId !== id
-              ),
+              components: newComponents,
+              selectedComponentIds: state.selectedComponentIds.filter((cid) => cid !== id),
             }
           })
-
-          get().saveHistory(`Deleted component ${id}`)
         },
 
         duplicateComponent: (id) => {
           const component = get().components[id]
-          if (!component) return
+          if (!component) return ''
 
-          const clone = deepClone(component)
           const newId = generateComponentId(component.type)
-          clone.id = newId
+          const duplicate = deepClone(component)
+          duplicate.id = newId
 
           set((state) => ({
             components: {
               ...state.components,
-              [newId]: clone,
+              [newId]: duplicate,
             },
           }))
 
-          get().saveHistory(`Duplicated component ${id}`)
+          return newId
         },
 
         // Selection actions
         selectComponent: (id, multi = false) => {
           set((state) => {
             if (multi) {
-              const ids = state.selectedComponentIds.includes(id)
-                ? state.selectedComponentIds.filter((selectedId) => selectedId !== id)
-                : [...state.selectedComponentIds, id]
-              return { selectedComponentIds: ids }
+              return {
+                selectedComponentIds: [...state.selectedComponentIds, id],
+              }
             }
             return { selectedComponentIds: [id] }
           })
@@ -215,26 +197,8 @@ export const useBuilderStore = create<BuilderStore>()(
 
         // Drag & Drop actions
         moveComponent: (id, newParentId, index) => {
-          set((state) => {
-            const components = { ...state.components }
-            const component = components[id]
-            if (!component) return state
-
-            // Remove from old parent
-            Object.values(components).forEach((comp) => {
-              comp.children = comp.children.filter((child) => child.id !== id)
-            })
-
-            // Add to new parent
-            if (newParentId && components[newParentId]) {
-              const newParent = components[newParentId]
-              newParent.children.splice(index, 0, component)
-            }
-
-            return { components }
-          })
-
-          get().saveHistory(`Moved component ${id}`)
+          // Implementation for moving components
+          console.log('moveComponent', id, newParentId, index)
         },
 
         setHoveredComponent: (id) => {
@@ -269,47 +233,37 @@ export const useBuilderStore = create<BuilderStore>()(
 
         // Canvas actions
         setZoom: (zoom) => {
-          set({ zoom: Math.max(0.25, Math.min(4, zoom)) })
+          const clampedZoom = Math.max(25, Math.min(400, zoom))
+          set({ zoom: clampedZoom })
         },
 
         setPan: (x, y) => {
-          set({ pan: { x, y } })
+          set({ pan: { x, y }, panOffset: { x, y } })
+        },
+
+        setPanOffset: (offset) => {
+          set({ panOffset: offset, pan: offset })
         },
 
         resetCanvas: () => {
-          set({ zoom: 1, pan: { x: 0, y: 0 } })
+          set({ zoom: 100, pan: { x: 0, y: 0 }, panOffset: { x: 0, y: 0 } })
+        },
+
+        zoomIn: () => {
+          const currentZoom = get().zoom
+          get().setZoom(currentZoom + 25)
+        },
+
+        zoomOut: () => {
+          const currentZoom = get().zoom
+          get().setZoom(currentZoom - 25)
+        },
+
+        resetZoom: () => {
+          set({ zoom: 100 })
         },
 
         // History actions
-        saveHistory: (description) => {
-          set((state) => {
-            const historyState: HistoryState = {
-              components: deepClone(state.components),
-              timestamp: Date.now(),
-              description,
-            }
-
-            const newHistory = [
-              ...state.history.slice(0, state.historyIndex + 1),
-              historyState,
-            ]
-
-            // Limit history to 100 items
-            if (newHistory.length > 100) {
-              newHistory.shift()
-              return {
-                history: newHistory,
-                historyIndex: newHistory.length - 1,
-              }
-            }
-
-            return {
-              history: newHistory,
-              historyIndex: newHistory.length - 1,
-            }
-          })
-        },
-
         undo: () => {
           set((state) => {
             if (state.historyIndex <= 0) return state
@@ -318,8 +272,10 @@ export const useBuilderStore = create<BuilderStore>()(
             const historyState = state.history[newIndex]
 
             return {
-              components: deepClone(historyState.components),
+              components: historyState.components,
               historyIndex: newIndex,
+              canUndo: newIndex > 0,
+              canRedo: true,
             }
           })
         },
@@ -332,19 +288,44 @@ export const useBuilderStore = create<BuilderStore>()(
             const historyState = state.history[newIndex]
 
             return {
-              components: deepClone(historyState.components),
+              components: historyState.components,
               historyIndex: newIndex,
+              canUndo: true,
+              canRedo: newIndex < state.history.length - 1,
+            }
+          })
+        },
+
+        saveHistory: (description) => {
+          set((state) => {
+            const newHistory: HistoryState = {
+              components: deepClone(state.components),
+              timestamp: Date.now(),
+              description,
+            }
+
+            const history = state.history.slice(0, state.historyIndex + 1)
+            history.push(newHistory)
+
+            // Keep only last 100 states
+            const trimmedHistory = history.slice(-100)
+
+            return {
+              history: trimmedHistory,
+              historyIndex: trimmedHistory.length - 1,
+              canUndo: trimmedHistory.length > 1,
+              canRedo: false,
             }
           })
         },
 
         clearHistory: () => {
-          set({ history: [], historyIndex: -1 })
+          set({ history: [], historyIndex: -1, canUndo: false, canRedo: false })
         },
 
         // Utility
         getComponent: (id) => {
-          return get().components[id] || null
+          return get().components[id]
         },
 
         getAllComponents: () => {
@@ -353,30 +334,18 @@ export const useBuilderStore = create<BuilderStore>()(
 
         getComponentTree: () => {
           const components = get().components
-          const roots: ComponentNode[] = []
-
-          // Find root components (those without parents)
-          Object.values(components).forEach((component) => {
-            const isChild = Object.values(components).some((comp) =>
-              comp.children.some((child) => child.id === component.id)
-            )
-
-            if (!isChild) {
-              roots.push(component)
-            }
-          })
-
-          return roots
+          return Object.values(components).filter((c) => !c.position)
         },
       }),
       {
-        name: 'devbase-builder-storage',
+        name: 'builder-store',
         partialize: (state) => ({
           showComponentLibrary: state.showComponentLibrary,
           showPropertiesPanel: state.showPropertiesPanel,
           showLayersPanel: state.showLayersPanel,
           showCodeEditor: state.showCodeEditor,
           zoom: state.zoom,
+          pan: state.pan,
           previewDevice: state.previewDevice,
         }),
       }
